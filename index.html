@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificador de Informes Diários</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+        }
+        .drop-area {
+            border: 2px dashed #3b82f6;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .drop-area:hover, .drop-area.active {
+            border-color: #1d4ed8;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 shadow-lg">
+            <div class="container mx-auto px-4">
+                <h1 class="text-2xl font-bold">Verificador de Informes Diários</h1>
+                <p class="text-blue-100">Garanta que todos os funcionários estejam corretamente incluídos no informe</p>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 flex-grow">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Área de Upload -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Arquivos de Entrada</h2>
+                    
+                    <!-- Upload do Informe -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-medium mb-2">Informe Diário</label>
+                        <div id="informeDropArea" class="drop-area p-6 text-center cursor-pointer">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-gray-600">Arraste o arquivo do informe ou clique para selecionar</p>
+                                <p class="text-sm text-gray-500 mt-1">(formato .txt)</p>
+                            </div>
+                            <input type="file" id="informeInput" class="hidden" accept=".txt">
+                        </div>
+                        <div id="informeFileInfo" class="mt-2 text-sm text-gray-600 hidden">
+                            <span class="font-medium">Arquivo selecionado:</span> <span id="informeFileName"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload da Lista de Funcionários -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-medium mb-2">Lista de Funcionários</label>
+                        <div id="funcionariosDropArea" class="drop-area p-6 text-center cursor-pointer">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                <p class="text-gray-600">Arraste a lista de funcionários ou clique para selecionar</p>
+                                <p class="text-sm text-gray-500 mt-1">(formato .txt)</p>
+                            </div>
+                            <input type="file" id="funcionariosInput" class="hidden" accept=".txt">
+                        </div>
+                        <div id="funcionariosFileInfo" class="mt-2 text-sm text-gray-600 hidden">
+                            <span class="font-medium">Arquivo selecionado:</span> <span id="funcionariosFileName"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Botão de Verificação -->
+                    <button id="verificarBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
+                        Verificar Informe
+                    </button>
+                </div>
+                
+                <!-- Área de Resultados -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Resultados da Verificação</h2>
+                    
+                    <div id="loadingResults" class="hidden">
+                        <div class="flex justify-center items-center py-12">
+                            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div id="noResults" class="text-center py-12">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-gray-500">Selecione os arquivos e clique em "Verificar Informe" para ver os resultados</p>
+                    </div>
+                    
+                    <div id="resultsContainer" class="hidden space-y-6">
+                        <!-- Resumo -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-blue-800 mb-2">Resumo da Verificação</h3>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-white rounded-md p-3 shadow-sm">
+                                    <p class="text-sm text-gray-500">Total de Funcionários</p>
+                                    <p id="totalFuncionarios" class="text-xl font-bold text-blue-700">-</p>
+                                </div>
+                                <div class="bg-white rounded-md p-3 shadow-sm">
+                                    <p class="text-sm text-gray-500">Presentes no Informe</p>
+                                    <p id="presentesNoInforme" class="text-xl font-bold text-blue-700">-</p>
+                                </div>
+                                <div class="bg-white rounded-md p-3 shadow-sm">
+                                    <p class="text-sm text-gray-500">Faltando</p>
+                                    <p id="totalFaltando" class="text-xl font-bold text-blue-700">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Funcionários Ausentes -->
+                        <div id="faltandoCard" class="result-card bg-red-50 border border-red-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-red-800 mb-2">
+                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Funcionários Faltando no Informe
+                            </h3>
+                            <div id="faltandoList" class="max-h-40 overflow-y-auto bg-white rounded-md p-3">
+                                <ul class="list-disc list-inside text-red-700 pl-2"></ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Nomes Extras -->
+                        <div id="extrasCard" class="result-card bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-purple-800 mb-2">
+                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Nomes Extras no Informe
+                            </h3>
+                            <div id="extrasList" class="max-h-40 overflow-y-auto bg-white rounded-md p-3">
+                                <ul class="list-disc list-inside text-purple-700 pl-2"></ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Funcionários Duplicados -->
+                        <div id="duplicadosCard" class="result-card bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-yellow-800 mb-2">
+                                <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Funcionários Duplicados no Informe
+                            </h3>
+                            <div id="duplicadosList" class="max-h-40 overflow-y-auto bg-white rounded-md p-3">
+                                <ul class="list-disc list-inside text-yellow-700 pl-2"></ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Botão para Exportar Relatório -->
+                        <button id="exportarBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 mt-4">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Exportar Relatório
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-gray-800 text-white py-4 mt-8">
+            <div class="container mx-auto px-4 text-center text-sm">
+                <p>Verificador de Informes Diários &copy; 2023</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos do DOM
+            const informeDropArea = document.getElementById('informeDropArea');
+            const informeInput = document.getElementById('informeInput');
+            const informeFileInfo = document.getElementById('informeFileInfo');
+            const informeFileName = document.getElementById('informeFileName');
+            
+            const funcionariosDropArea = document.getElementById('funcionariosDropArea');
+            const funcionariosInput = document.getElementById('funcionariosInput');
+            const funcionariosFileInfo = document.getElementById('funcionariosFileInfo');
+            const funcionariosFileName = document.getElementById('funcionariosFileName');
+            
+            const verificarBtn = document.getElementById('verificarBtn');
+            const exportarBtn = document.getElementById('exportarBtn');
+            
+            const loadingResults = document.getElementById('loadingResults');
+            const noResults = document.getElementById('noResults');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            // Variáveis para armazenar os conteúdos dos arquivos
+            let informeContent = null;
+            let funcionariosContent = null;
+            let resultadosVerificacao = null;
+
+            // Configurar áreas de arrastar e soltar
+            setupDropArea(informeDropArea, informeInput, (file) => {
+                informeFileName.textContent = file.name;
+                informeFileInfo.classList.remove('hidden');
+                readFile(file, content => {
+                    informeContent = content;
+                    checkEnableVerificarBtn();
+                });
+            });
+            
+            setupDropArea(funcionariosDropArea, funcionariosInput, (file) => {
+                funcionariosFileName.textContent = file.name;
+                funcionariosFileInfo.classList.remove('hidden');
+                readFile(file, content => {
+                    funcionariosContent = content;
+                    checkEnableVerificarBtn();
+                });
+            });
+            
+            // Verificar se ambos os arquivos foram carregados para habilitar o botão
+            function checkEnableVerificarBtn() {
+                verificarBtn.disabled = !(informeContent && funcionariosContent);
+            }
+            
+            // Configurar evento de clique no botão de verificação
+            verificarBtn.addEventListener('click', function() {
+                noResults.classList.add('hidden');
+                loadingResults.classList.remove('hidden');
+                resultsContainer.classList.add('hidden');
+                
+                // Simular processamento (para dar feedback visual)
+                setTimeout(() => {
+                    verificarInforme();
+                    loadingResults.classList.add('hidden');
+                    resultsContainer.classList.remove('hidden');
+                }, 800);
+            });
+            
+            // Configurar evento de clique no botão de exportação
+            exportarBtn.addEventListener('click', function() {
+                if (resultadosVerificacao) {
+                    exportarRelatorio();
+                }
+            });
+            
+            // Função para configurar área de arrastar e soltar
+            function setupDropArea(dropArea, fileInput, callback) {
+                // Evento de clique na área
+                dropArea.addEventListener('click', () => {
+                    fileInput.click();
+                });
+                
+                // Evento de mudança no input de arquivo
+                fileInput.addEventListener('change', () => {
+                    if (fileInput.files.length > 0) {
+                        callback(fileInput.files[0]);
+                    }
+                });
+                
+                // Eventos de arrastar e soltar
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, () => {
+                        dropArea.classList.add('active');
+                    });
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, () => {
+                        dropArea.classList.remove('active');
+                    });
+                });
+                
+                dropArea.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const file = dt.files[0];
+                    callback(file);
+                });
+            }
+            
+            // Função para ler o conteúdo do arquivo
+            function readFile(file, callback) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    callback(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+            
+            // Função para normalizar nomes (remover acentos, converter para minúsculas)
+            function normalizaNome(nome) {
+                nome = nome.toLowerCase().trim();
+                // Remover acentos
+                return nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            }
+            
+            // Função para extrair o nome até o primeiro " - "
+            function extrairNome(linha) {
+                // Remove o prefixo ✓ ou ***
+                linha = linha.replace(/^[✓*\s]+/, "").trim();
+                
+                // Pega até o primeiro " - ", se tiver
+                if (linha.includes(" - ")) {
+                    return linha.split(" - ")[0].trim();
+                }
+                
+                // Se for linha de observação, pega até o primeiro "("
+                if (linha.includes("(")) {
+                    return linha.split("(")[0].trim();
+                }
+                
+                return linha.trim();
+            }
+            
+            // Função principal para verificar o informe
+            function verificarInforme() {
+                // Obter lista de funcionários
+                const funcionarios = {};
+                const linhasFuncionarios = funcionariosContent.split('\n');
+                
+                for (const linha of linhasFuncionarios) {
+                    const linhaLimpa = linha.trim();
+                    if (!linhaLimpa.startsWith("✓")) continue;
+                    
+                    const nomeCompleto = linhaLimpa.replace(/^✓\s+/, "").trim();
+                    const nomeSimples = extrairNome(nomeCompleto);
+                    const nomeNorm = normalizaNome(nomeSimples);
+                    funcionarios[nomeNorm] = nomeCompleto;
+                }
+                
+                // Processar o informe
+                const informeDict = {};
+                const observacoes = {};
+                const linhasInforme = informeContent.split('\n');
+                
+                for (const linha of linhasInforme) {
+                    const linhaLimpa = linha.trim();
+                    
+                    // Ignorar linhas de DDS
+                    if (linhaLimpa.startsWith("✓ Feito por:")) continue;
+                    
+                    if (linhaLimpa.startsWith("✓")) {
+                        const nomeCompleto = linhaLimpa.replace(/^✓\s+/, "").trim();
+                        const nomeSimples = extrairNome(nomeCompleto);
+                        const nomeNorm = normalizaNome(nomeSimples);
+                        
+                        if (!informeDict[nomeNorm]) {
+                            informeDict[nomeNorm] = [];
+                        }
+                        informeDict[nomeNorm].push(nomeCompleto);
+                    } 
+                    else if (linhaLimpa.startsWith("***")) {
+                        const obsTexto = linhaLimpa.replace(/^\*+\s*/, "").trim();
+                        const nomeSimples = extrairNome(obsTexto);
+                        const nomeNorm = normalizaNome(nomeSimples);
+                        
+                        if (!informeDict[nomeNorm]) {
+                            informeDict[nomeNorm] = [];
+                        }
+                        informeDict[nomeNorm].push(obsTexto);
+                        observacoes[nomeNorm] = obsTexto;
+                    }
+                }
+                
+                // Verificar faltantes
+                const faltando = [];
+                for (const [nomeNorm, nomeCompleto] of Object.entries(funcionarios)) {
+                    if (!informeDict[nomeNorm]) {
+                        faltando.push(nomeCompleto);
+                    }
+                }
+                
+                // Verificar extras e duplicados
+                const extras = [];
+                const duplicados = [];
+                
+                for (const [nomeNorm, linhas] of Object.entries(informeDict)) {
+                    if (!funcionarios[nomeNorm]) {
+                        // Nome não está na lista mestra
+                        extras.push(...linhas);
+                    } else {
+                        // Nome está na lista mestra, verificar duplicatas
+                        if (linhas.length > 1) {
+                            // Se só houver uma linha que é observação, não conta como duplicado
+                            const linhasSemObs = linhas.filter(l => !l.startsWith("***"));
+                            if (linhasSemObs.length > 1) {
+                                duplicados.push(funcionarios[nomeNorm]);
+                            }
+                        }
+                    }
+                }
+                
+                // Armazenar resultados
+                resultadosVerificacao = {
+                    totalFuncionarios: Object.keys(funcionarios).length,
+                    presentesNoInforme: Object.keys(funcionarios).length - faltando.length,
+                    faltando,
+                    extras,
+                    duplicados
+                };
+                
+                // Atualizar a interface
+                atualizarResultados(resultadosVerificacao);
+            }
+            
+            // Função para atualizar a interface com os resultados
+            function atualizarResultados(resultados) {
+                // Atualizar resumo
+                document.getElementById('totalFuncionarios').textContent = resultados.totalFuncionarios;
+                document.getElementById('presentesNoInforme').textContent = resultados.presentesNoInforme;
+                document.getElementById('totalFaltando').textContent = resultados.faltando.length;
+                
+                // Atualizar lista de faltando
+                const faltandoCard = document.getElementById('faltandoCard');
+                const faltandoList = document.getElementById('faltandoList').querySelector('ul');
+                faltandoList.innerHTML = '';
+                
+                if (resultados.faltando.length > 0) {
+                    resultados.faltando.forEach(nome => {
+                        const li = document.createElement('li');
+                        li.textContent = nome;
+                        faltandoList.appendChild(li);
+                    });
+                    faltandoCard.classList.remove('hidden');
+                } else {
+                    faltandoCard.classList.add('hidden');
+                }
+                
+                // Atualizar lista de extras
+                const extrasCard = document.getElementById('extrasCard');
+                const extrasList = document.getElementById('extrasList').querySelector('ul');
+                extrasList.innerHTML = '';
+                
+                if (resultados.extras.length > 0) {
+                    resultados.extras.forEach(nome => {
+                        const li = document.createElement('li');
+                        li.textContent = nome;
+                        extrasList.appendChild(li);
+                    });
+                    extrasCard.classList.remove('hidden');
+                } else {
+                    extrasCard.classList.add('hidden');
+                }
+                
+                // Atualizar lista de duplicados
+                const duplicadosCard = document.getElementById('duplicadosCard');
+                const duplicadosList = document.getElementById('duplicadosList').querySelector('ul');
+                duplicadosList.innerHTML = '';
+                
+                if (resultados.duplicados.length > 0) {
+                    resultados.duplicados.forEach(nome => {
+                        const li = document.createElement('li');
+                        li.textContent = nome;
+                        duplicadosList.appendChild(li);
+                    });
+                    duplicadosCard.classList.remove('hidden');
+                } else {
+                    duplicadosCard.classList.add('hidden');
+                }
+            }
+            
+            // Função para exportar o relatório
+            function exportarRelatorio() {
+                const resultados = resultadosVerificacao;
+                
+                let conteudo = "Relatório de verificação:\n\n";
+                
+                conteudo += "Faltando no informe:\n";
+                if (resultados.faltando.length > 0) {
+                    resultados.faltando.forEach(nome => {
+                        conteudo += ` - ${nome}\n`;
+                    });
+                } else {
+                    conteudo += " Nenhum\n";
+                }
+                
+                conteudo += "\nNomes extras no informe:\n";
+                if (resultados.extras.length > 0) {
+                    resultados.extras.forEach(nome => {
+                        conteudo += ` - ${nome}\n`;
+                    });
+                } else {
+                    conteudo += " Nenhum\n";
+                }
+                
+                conteudo += "\nNomes duplicados no informe:\n";
+                if (resultados.duplicados.length > 0) {
+                    resultados.duplicados.forEach(nome => {
+                        conteudo += ` - ${nome}\n`;
+                    });
+                } else {
+                    conteudo += " Nenhum\n";
+                }
+                
+                conteudo += "\nResumo:\n";
+                conteudo += ` - Total na lista base: ${resultados.totalFuncionarios}\n`;
+                conteudo += ` - Presentes no informe: ${resultados.presentesNoInforme}\n`;
+                conteudo += ` - Faltando: ${resultados.faltando.length}\n`;
+                
+                // Criar blob e link para download
+                const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `relatorio-verificacao-${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+    </script>
+</body>
+</html>
